@@ -43,6 +43,8 @@
  *     responses:
  *       200:
  *         description: User updated
+ *       400:
+ *         description: Invalid email address
  *       401:
  *         description: Unauthorized
  */
@@ -89,6 +91,14 @@ router.put("/:id", async (req: Request, res: Response) => {
     res.status(401).json({ success: false, message: "Unauthorized" });
     return;
   }
+
+  // Valid email check if email is being updated
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (req.body.user_email && !emailRegex.test(req.body.user_email)) {
+    res.status(400).json({ success: false, message: "Invalid email address" });
+    return;
+  }
+
   const user = await updateUser(id, {
     user_name: req.body.user_name,
     user_email: req.body.user_email,

@@ -22,7 +22,7 @@
  *       201:
  *         description: User created
  *       400:
- *         description: Missing fields or user already exists
+ *         description: Missing fields, invalid email, or email already exists
  * /api/auth/login:
  *   post:
  *     summary: Login and receive a JWT token
@@ -56,18 +56,34 @@ import jwt from "jsonwebtoken";
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET!;
 
+// Email validation regex
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 // POST /api/auth/signup
 router.post("/signup", async (req: Request, res: Response) => {
   try {
     const { user_name, user_email, password } = req.body;
+    
     if (!user_name || !user_email || !password) {
       res.status(400).json({ success: false, message: "All fields required" });
       return;
     }
+
+    // Valid email check
+    if (!emailRegex.test(user_email)) {
+      res.status(400).json({ success: false, message: "Invalid email address" });
+      return;
+    }
+
     const password_hash = await bcrypt.hash(password, 10);
     const user = await createUser({ user_name, user_email, password_hash });
     res.status(201).json({ success: true, data: user });
   } catch (error: any) {
+    // Duplicate email check
+    if (error.message === "Email already exists") {
+      res.status(400).json({ success: false, message: "Email already exists" });
+      return;
+    }
     res.status(400).json({ success: false, message: error.message });
   }
 });
