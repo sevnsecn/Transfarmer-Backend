@@ -55,7 +55,7 @@ export async function updateUser(
   const user = await User.findByIdAndUpdate(
     id,
     { $set: updates },
-    { new: true }
+  { returnDocument: 'after' }
   ).select("-password_hash");
   if (!user) {
     throw new Error("User not found");
