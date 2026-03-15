@@ -27,24 +27,38 @@ export async function getUserById(id: string) {
   return User.findById(id).select("-password_hash");
 }
 
+export async function getUserWithPassword(id: string) {
+  await connectDB();
+  return User.findById(id);
+}
+
 export async function updateUser(
   id: string,
   updates: {
     user_name?: string;
     user_email?: string;
+    password_hash?: string;
   }
 ) {
   await connectDB();
+
+  if (updates.user_email) {
+    const existing = await User.findOne({
+      user_email: updates.user_email,
+      _id: { $ne: id }
+    });
+    if (existing) {
+      throw new Error("Email already exists");
+    }
+  }
 
   const user = await User.findByIdAndUpdate(
     id,
     { $set: updates },
     { new: true }
   ).select("-password_hash");
-
   if (!user) {
     throw new Error("User not found");
   }
-
   return user;
 }

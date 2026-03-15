@@ -14,15 +14,18 @@
  *             properties:
  *               user_name:
  *                 type: string
+ *                 example: user
  *               user_email:
  *                 type: string
+ *                 example: user@example.com
  *               password:
  *                 type: string
+ *                 example: password123
  *     responses:
  *       201:
  *         description: User created
  *       400:
- *         description: Missing fields, invalid email, or email already exists
+ *         description: Missing fields, weak password(min 6 chars, at least 1 letter or symbol), invalid email, or email already exists
  * /api/auth/login:
  *   post:
  *     summary: Login and receive a JWT token
@@ -37,8 +40,10 @@
  *             properties:
  *               user_email:
  *                 type: string
+ *                 example: user@example.com
  *               password:
  *                 type: string
+ *                 example: password123
  *     responses:
  *       200:
  *         description: Login successful, returns token
@@ -75,11 +80,24 @@ router.post("/signup", async (req: Request, res: Response) => {
       return;
     }
 
+    if (password.length < 6) {
+      res.status(400).json({ success: false, message: "Password must be at least 6 characters" });
+      return;
+    }
+
+    
+    if (!/[a-zA-Z]/.test(password) && !/[^a-zA-Z0-9]/.test(password)) {
+      res.status(400).json({ success: false, message: "Password must contain at least 1 letter or 1 symbol" });
+      return;
+    }
+
+
+
     const password_hash = await bcrypt.hash(password, 10);
     const user = await createUser({ user_name, user_email, password_hash });
     res.status(201).json({ success: true, data: user });
   } catch (error: any) {
-    // Duplicate email check
+    // Duplicate email check received from service layer
     if (error.message === "Email already exists") {
       res.status(400).json({ success: false, message: "Email already exists" });
       return;
