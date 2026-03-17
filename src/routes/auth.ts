@@ -125,7 +125,16 @@ router.post("/login", async (req: Request, res: Response) => {
       JWT_SECRET,
       { expiresIn: "7d" }
     );
-    res.json({ success: true, token });
+    res.json({ 
+      success: true, 
+      token,
+      user: {
+        id: user._id,
+        user_name: user.user_name,
+        user_email: user.user_email,
+        is_admin: user.is_admin
+      }
+    });
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ success: false, message: "Login failed" });
