@@ -12,6 +12,7 @@ import farmRoutes from "./routes/farms";
 import productRoutes from "./routes/products";
 import orderRoutes from "./routes/orders";
 import orderItemRoutes from "./routes/orderItems";
+import uploadRoutes from "./routes/upload/image";
 
 
 
@@ -54,6 +55,7 @@ app.use("/api/farms", farmRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/orders/:id/order_items", orderItemRoutes);
+app.use("/api/upload/image", uploadRoutes);
 
 // Start server
 app.listen(PORT, () => {

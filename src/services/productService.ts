@@ -39,7 +39,7 @@ export async function getAllProducts(filters: ProductFilters = {}) {
     if (filters.maxPrice !== undefined) query.price_per_kg.$lte = filters.maxPrice;
   }
 
-  return Product.find(query)/*.populate("farm_id")*/.lean(); //temporarily commented because Farm model is not yet implemented
+  return Product.find(query).populate("farm_id").lean(); 
 }
 
 // Get a single product by its MongoDB _id
