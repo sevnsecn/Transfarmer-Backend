@@ -5,14 +5,34 @@ import mongoose from "mongoose";
 export async function createOrderItem(data: any) {
   await connectDB();
 
-  const item = await OrderItem.create({
-    order_id: new mongoose.Types.ObjectId(data.order_id),
-    items_id: new mongoose.Types.ObjectId(data.items_id),
-    quantity: data.quantity,
-    price: data.price
+  const existing = await OrderItem.findOne({
+    user_id: data.user_id,
+    product_id: data.product_id,
   });
 
-  return OrderItem.findById(item._id).lean();
+  // 🔥 Prevent duplicate items
+  if (existing) {
+    existing.quantity += data.quantity;
+    await existing.save();
+    return existing;
+  }
+
+  const item = await OrderItem.create({
+    user_id: data.user_id,
+    product_id: new mongoose.Types.ObjectId(data.product_id),
+    quantity: data.quantity,
+  });
+
+  return item;
+}
+
+//new lane
+export async function getOrderItemsByUser(userId: string) {
+  await connectDB();
+
+  return OrderItem.find({ user_id: userId })
+    .populate("product_id")
+    .lean();
 }
 
 export async function getOrderItemsByOrder(orderId: string) {
@@ -26,24 +46,23 @@ export async function getOrderItemsByOrder(orderId: string) {
 export async function getOrderItemById(id: string) {
   await connectDB();
 
-  return OrderItem.findById(id).lean();
+  return OrderItem.find().populate("product_id");
 }
 
+//update
 export async function updateOrderItem(id: string, data: any) {
   await connectDB();
 
   return OrderItem.findByIdAndUpdate(
     id,
     {
-      ...data,
-      items_id: data.items_id
-        ? new mongoose.Types.ObjectId(data.items_id)
-        : undefined
+      quantity: data.quantity
     },
     { new: true }
   ).lean();
 }
 
+//delete
 export async function deleteOrderItem(id: string) {
   await connectDB();
 

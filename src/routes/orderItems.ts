@@ -113,60 +113,104 @@
  *         description: Failed to delete order item
  */
 
-import { Router, Request, Response } from "express";
-import { getOrderItemsByOrder, createOrderItem, getOrderItemById, updateOrderItem, deleteOrderItem } from "../services/orderItemService";
+  import { Router, Request, Response } from "express";
+  import authMiddleware from "../middleware/auth"; // adjust path
+  import {
+  createOrderItem,
+  getOrderItemById,
+  getOrderItemsByUser,
+  updateOrderItem,
+  deleteOrderItem,
+} from "../services/orderItemService";
 
-const router = Router({ mergeParams: true });
+  const router = Router({ mergeParams: true });
+  router.use(authMiddleware); 
 
-// GET /api/orders/:id/order_items
+  // GET /api/orders/:id/order_items
 router.get("/", async (req: Request, res: Response) => {
   try {
-    const items = await getOrderItemsByOrder(req.params.id as string);    res.json({ success: true, data: items });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to fetch order items" });
+    console.log("USER:", (req as any).user); // 👈 ADD THIS
+
+    const userId = (req as any).user.id;
+
+    const items = await getOrderItemsByUser(userId);
+
+    res.json({ success: true, data: items });
+  } catch (error) {
+    console.error("ERROR:", error); // 👈 ADD THIS
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch cart items",
+    });
   }
 });
 
-// POST /api/orders/:id/order_items
+// 🔥 ADD TO CART
 router.post("/", async (req: Request, res: Response) => {
   try {
+    const userId = (req as any).user.id;
+
     const item = await createOrderItem({
-      order_id: req.params.id,
-      items_id: req.body.items_id,
+      user_id: userId,
+      product_id: req.body.product_id,
       quantity: req.body.quantity,
-      price: req.body.price,
     });
+
     res.status(201).json({ success: true, data: item });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, message: "Failed to create order item" });
+    res.status(500).json({
+      success: false,
+      message: "Failed to add to cart",
+    });
   }
 });
 
-// GET /api/orders/:id/order_items/:itemsId
+// 🔥 GET SINGLE ITEM
 router.get("/:itemsId", async (req: Request, res: Response) => {
   try {
-    const item = await getOrderItemById(req.params.itemsId as string);    res.json({ success: true, data: item });
+    const item = await getOrderItemById(req.params.itemsId as string);
+
+    res.json({ success: true, data: item });
   } catch {
-    res.status(500).json({ success: false, message: "Failed to fetch order item" });
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch item",
+    });
   }
 });
 
-// PUT /api/orders/:id/order_items/:itemsId
+// 🔥 UPDATE QUANTITY
 router.put("/:itemsId", async (req: Request, res: Response) => {
   try {
-    const updated = await updateOrderItem(req.params.itemsId as string, req.body);    res.json({ success: true, data: updated });
+    const updated = await updateOrderItem(
+      req.params.itemsId as string,
+      { quantity: req.body.quantity }
+    );
+
+    res.json({ success: true, data: updated });
   } catch {
-    res.status(500).json({ success: false, message: "Failed to update order item" });
+    res.status(500).json({
+      success: false,
+      message: "Failed to update item",
+    });
   }
 });
 
-// DELETE /api/orders/:id/order_items/:itemsId
+// 🔥 DELETE ITEM
 router.delete("/:itemsId", async (req: Request, res: Response) => {
   try {
-    await deleteOrderItem(req.params.itemsId as string);    res.json({ success: true, message: "Order item deleted" });
+    await deleteOrderItem(req.params.itemsId as string);
+
+    res.json({
+      success: true,
+      message: "Item removed from cart",
+    });
   } catch {
-    res.status(500).json({ success: false, message: "Failed to delete order item" });
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete item",
+    });
   }
 });
 

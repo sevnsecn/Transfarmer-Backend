@@ -37,3 +37,23 @@ export function getUser(req: Request): any {
     return null;
   }
 }
+//new line
+export default function authMiddleware(req: Request, res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    return res.status(401).json({ success: false, message: "No token" });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  try {
+    const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
+
+    (req as any).user = decoded; // 🔥 THIS LINE IS CRITICAL
+
+    next();
+  } catch (err) {
+    return res.status(401).json({ success: false, message: "Invalid token" });
+  }
+}
