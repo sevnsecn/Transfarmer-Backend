@@ -157,4 +157,67 @@ if (req.body.new_password) {
     }
   });
 
+//CRUD alamat
+//get
+router.get("/:id/address", async (req: Request, res: Response) => {
+  const session = getUserFromToken(req);
+  const { id } = req.params as { id: string }; // 🔥 FIX
+
+  if (!session || session.id !== id) {
+    return res.status(401).json({ success: false, message: "Unauthorized" });
+  }
+
+  try {
+    const user = await getUserById(id);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    return res.json({
+      success: true,
+      data: user.address || null,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch address",
+    });
+  }
+});
+
+//update
+router.put("/:id/address", async (req: Request, res: Response) => {
+  const session = getUserFromToken(req);
+  const { id } = req.params as { id: string }; // 🔥 FIX WAJIB
+
+  if (!session || session.id !== id) {
+    return res.status(401).json({ success: false, message: "Unauthorized" });
+  }
+
+  try {
+    const user = await updateUser(id, {
+      address: {
+        full_name: req.body.full_name,
+        phone: req.body.phone,
+        address_line: req.body.address_line,
+        city: req.body.city,
+        postal_code: req.body.postal_code,
+      },
+    });
+
+    return res.json({
+      success: true,
+      data: user.address,
+    });
+  } catch (error) {
+    console.error(error); // 🔥 penting buat debug
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update address",
+    });
+  }
+});
+
 export default router;

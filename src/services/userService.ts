@@ -38,6 +38,13 @@ export async function updateUser(
     user_name?: string;
     user_email?: string;
     password_hash?: string;
+      address?: {// buat alamat
+    full_name?: string;
+    phone?: string;
+    address_line?: string;
+    city?: string;
+    postal_code?: string;
+  };
   }
 ) {
   await connectDB();
