@@ -104,7 +104,8 @@
  */
 
 import { Router, Request, Response } from "express";
-import { getAllOrders, getOrderById, createOrder, updateOrder, deleteOrder, checkoutOrder } from "../services/orderService";
+import { getAllOrders, getOrderById, createOrder, updateOrder, deleteOrder, checkoutOrder, getOrdersByUser } from "../services/orderService";
+import authMiddleware from "../middleware/auth";
 
 const router = Router();
 
@@ -132,6 +133,30 @@ router.post("/", async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: "Failed to create order" });
   }
 });
+
+// 🔥 TARUH PALING ATAS
+router.get("/my-orders", authMiddleware, async (req, res) => {
+  try {
+    const user = (req as any).user;
+    console.log("USER:", user);
+
+    const orders = await getOrdersByUser(user.id);
+    console.log("ORDERS DB:", orders);
+
+    res.json({
+      success: true,
+      data: orders,
+    });
+  } catch (err: any) {
+    console.error("MY ORDERS ERROR:", err);
+
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
 
 // GET /api/orders/:id
 router.get("/:id", async (req: Request, res: Response) => {
@@ -163,13 +188,33 @@ router.delete("/:id", async (req: Request, res: Response) => {
   }
 });
 
+
+
+
 // POST /api/orders/:id/checkout
-router.post("/:id/checkout", async (req: Request, res: Response) => {
+router.post("/checkout", authMiddleware, async (req, res)  => {
   try {
-    const order = await checkoutOrder(req.params.id as string);    res.json({ success: true, data: order });
-  } catch {
-    res.status(500).json({ success: false, message: "Checkout failed" });
+    const user = (req as any).user;
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const order = await checkoutOrder(user.id);
+
+    res.json({ success: true, data: order });
+  } catch (err: any) {
+    console.error("CHECKOUT ERROR:", err.message);
+
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 });
+
 
 export default router;

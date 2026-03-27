@@ -1,5 +1,7 @@
 import { connectDB } from "../lib/db";
 import Order from "../models/Order";
+import { getOrderItemsByUser, deleteOrderItemsByUser } from "../services/orderItemService";
+import { getUserById } from "../services/userService";
 
 export type CreateOrderInput = {
   user_id: string;
@@ -65,17 +67,46 @@ export async function deleteOrder(id: string) {
 }
 
 //checkout order
-export async function checkoutOrder(orderId: string) {
-  const order = await Order.findById(orderId);
+export async function checkoutOrder(userId: string) {
+  await connectDB();
 
-  if (!order) {
-    throw new Error("Order not found");
+  const cartItems = await getOrderItemsByUser(userId);
+
+  if (!cartItems.length) {
+    throw new Error("Cart is empty");
   }
 
-  // change cart to pending
-  order.order_status = "pending";
+  const user = await getUserById(userId);
 
-  await order.save();
+  if (!user?.address) {
+    throw new Error("Address not set");
+  }
+
+  const total = cartItems.reduce(
+    (sum, item) =>
+      sum + item.quantity * item.product_id.price_per_kg,
+    0
+  );
+
+  const order = await Order.create({
+    user_id: userId,
+    items: cartItems.map(item => ({
+      product_id: item.product_id._id,
+      quantity: item.quantity,
+      price: item.product_id.price_per_kg,
+    })),
+    total_price: total,
+    address: user.address,
+    status: "pending",
+  });
+
+  await deleteOrderItemsByUser(userId);
 
   return order;
+}
+//supaya user bisa liet orderannya
+export async function getOrdersByUser(userId: string) {
+  await connectDB();
+
+  return Order.find({ user_id: userId }).lean();
 }

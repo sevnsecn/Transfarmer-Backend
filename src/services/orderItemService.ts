@@ -68,3 +68,9 @@ export async function deleteOrderItem(id: string) {
 
   return OrderItem.findByIdAndDelete(id);
 }
+//delete item user kalo udh checkout
+export async function deleteOrderItemsByUser(userId: string) {
+  await connectDB();
+
+  await OrderItem.deleteMany({ user_id: userId });
+}
