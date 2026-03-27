@@ -34,6 +34,7 @@
  *         description: Missing required fields
  *       500:
  *         description: Failed to create order
+ *
  * /api/orders/{id}:
  *   get:
  *     summary: Get a single order
@@ -86,21 +87,62 @@
  *         description: Order deleted
  *       500:
  *         description: Failed to delete order
- * /api/orders/{id}/checkout:
+ *
+ * /api/orders/checkout:
  *   post:
  *     summary: Checkout an order
  *     tags: [Orders]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Order checked out
+ *       401:
+ *         description: Unauthorized
  *       500:
  *         description: Checkout failed
+ *
+ * /api/orders/my-orders:
+ *   get:
+ *     summary: Get orders for authenticated user
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User orders retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       user_id:
+ *                         type: string
+ *                       total_price:
+ *                         type: number
+ *                       status:
+ *                         type: string
+ *                         enum: [cart, pending, confirmed, delivered]
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                       updated_at:
+ *                         type: string
+ *                         format: date-time
+ *       401:
+ *         description: Unauthorized (missing/invalid token)
+ *       500:
+ *         description: Failed to fetch user orders
  */
 
 import { Router, Request, Response } from "express";
@@ -134,7 +176,7 @@ router.post("/", async (req: Request, res: Response) => {
   }
 });
 
-// 🔥 TARUH PALING ATAS
+// GET /api/orders/my-orders
 router.get("/my-orders", authMiddleware, async (req, res) => {
   try {
     const user = (req as any).user;
@@ -191,7 +233,7 @@ router.delete("/:id", async (req: Request, res: Response) => {
 
 
 
-// POST /api/orders/:id/checkout
+// POST /api/orders/checkout
 router.post("/checkout", authMiddleware, async (req, res)  => {
   try {
     const user = (req as any).user;
