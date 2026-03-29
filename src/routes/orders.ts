@@ -146,7 +146,17 @@
  */
 
 import { Router, Request, Response } from "express";
-import { getAllOrders, getOrderById, createOrder, updateOrder, deleteOrder, checkoutOrder, getOrdersByUser } from "../services/orderService";
+import {
+  getAllOrders,
+  getOrderById,
+  createOrder,
+  updateOrder,
+  deleteOrder,
+  checkoutOrder,
+  getOrdersByUser,
+  updateOrderItemStatus,
+  OrderItemStatus,
+} from "../services/orderService";
 import authMiddleware from "../middleware/auth";
 
 const router = Router();
@@ -217,6 +227,40 @@ router.put("/:id", async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Failed to update order" });
+  }
+});
+
+// PUT /api/orders/:id/items/:itemId/status
+router.put("/:id/items/:itemId/status", async (req: Request, res: Response) => {
+  try {
+    const { status } = req.body as { status?: OrderItemStatus };
+
+    if (!status || !["pending", "confirmed", "delivered"].includes(status)) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid status. Allowed: pending, confirmed, delivered",
+      });
+      return;
+    }
+
+    const order = await updateOrderItemStatus(
+      req.params.id as string,
+      req.params.itemId as string,
+      status
+    );
+
+    res.json({ success: true, data: order });
+  } catch (error: any) {
+    if (error.message === "Order or item not found") {
+      res.status(404).json({ success: false, message: error.message });
+      return;
+    }
+
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update purchased item status",
+    });
   }
 });
 

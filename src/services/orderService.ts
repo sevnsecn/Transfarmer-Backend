@@ -14,6 +14,8 @@ export interface UpdateOrderInput {
   total_price?: number;
 }
 
+export type OrderItemStatus = "pending" | "confirmed" | "delivered";
+
 // GET
 export async function getAllOrders() {
   await connectDB();
@@ -94,6 +96,7 @@ export async function checkoutOrder(userId: string) {
       product_id: item.product_id._id,
       quantity: item.quantity,
       price: item.product_id.price_per_kg,
+      item_status: "pending",
     })),
     total_price: total,
     address: user.address,
@@ -109,4 +112,24 @@ export async function getOrdersByUser(userId: string) {
   await connectDB();
 
   return Order.find({ user_id: userId }).lean();
+}
+
+export async function updateOrderItemStatus(
+  orderId: string,
+  itemId: string,
+  status: OrderItemStatus
+) {
+  await connectDB();
+
+  const order = await Order.findOneAndUpdate(
+    { _id: orderId, "items._id": itemId },
+    { $set: { "items.$.item_status": status } },
+    { returnDocument: "after", runValidators: true }
+  ).lean();
+
+  if (!order) {
+    throw new Error("Order or item not found");
+  }
+
+  return order;
 }
