@@ -117,7 +117,9 @@
   import authMiddleware from "../middleware/auth"; // adjust path
   import {
   createOrderItem,
+  createOrderItemForOrder,
   getOrderItemById,
+  getOrderItemsByOrder,
   getOrderItemsByUser,
   updateOrderItem,
   deleteOrderItem,
@@ -130,7 +132,10 @@
 router.get("/", async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
-    const items = await getOrderItemsByUser(userId);
+    const orderId = req.params.id as string | undefined;
+    const items = orderId
+      ? await getOrderItemsByOrder(orderId)
+      : await getOrderItemsByUser(userId);
 
     const normalized = items.map((item: any) => ({
       ...item,
@@ -151,12 +156,28 @@ router.get("/", async (req: Request, res: Response) => {
 router.post("/", async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
+    const orderId = req.params.id as string | undefined;
+    const quantity = Number(req.body.quantity);
 
-    const item = await createOrderItem({
-      user_id: userId,
-      product_id: req.body.product_id,
-      quantity: Number(req.body.quantity),
-    });
+    if (!req.body.product_id || Number.isNaN(quantity) || quantity <= 0) {
+      res.status(400).json({
+        success: false,
+        message: "product_id and a valid quantity are required",
+      });
+      return;
+    }
+
+    const item = orderId
+      ? await createOrderItemForOrder({
+          order_id: orderId,
+          product_id: req.body.product_id,
+          quantity,
+        })
+      : await createOrderItem({
+          user_id: userId,
+          product_id: req.body.product_id,
+          quantity,
+        });
 
     res.status(201).json({
       success: true,
@@ -177,10 +198,16 @@ router.post("/", async (req: Request, res: Response) => {
 // 🔥 GET SINGLE ITEM
 router.get("/:itemsId", async (req: Request, res: Response) => {
   try {
+    const orderId = req.params.id as string | undefined;
     const item = await getOrderItemById(req.params.itemsId as string);
 
     if (!item) {
       res.status(404).json({ success: false, message: "Item not found" });
+      return;
+    }
+
+    if (orderId && String((item as any).order_id) !== String(orderId)) {
+      res.status(404).json({ success: false, message: "Item not found for this order" });
       return;
     }
 
@@ -202,9 +229,24 @@ router.get("/:itemsId", async (req: Request, res: Response) => {
 // 🔥 UPDATE QUANTITY
 router.put("/:itemsId", async (req: Request, res: Response) => {
   try {
+    const orderId = req.params.id as string | undefined;
+    const quantity = Number(req.body.quantity);
+    if (Number.isNaN(quantity) || quantity <= 0) {
+      res.status(400).json({ success: false, message: "quantity must be a positive number" });
+      return;
+    }
+
+    if (orderId) {
+      const existing = await getOrderItemById(req.params.itemsId as string);
+      if (!existing || String((existing as any).order_id) !== String(orderId)) {
+        res.status(404).json({ success: false, message: "Item not found for this order" });
+        return;
+      }
+    }
+
     const updated = await updateOrderItem(
       req.params.itemsId as string,
-      { quantity: Number(req.body.quantity) }
+      { quantity }
     );
 
     if (!updated) {
@@ -230,6 +272,15 @@ router.put("/:itemsId", async (req: Request, res: Response) => {
 // 🔥 DELETE ITEM
 router.delete("/:itemsId", async (req: Request, res: Response) => {
   try {
+    const orderId = req.params.id as string | undefined;
+    if (orderId) {
+      const existing = await getOrderItemById(req.params.itemsId as string);
+      if (!existing || String((existing as any).order_id) !== String(orderId)) {
+        res.status(404).json({ success: false, message: "Item not found for this order" });
+        return;
+      }
+    }
+
     const deleted = await deleteOrderItem(req.params.itemsId as string);
 
     if (!deleted) {

@@ -72,6 +72,45 @@ export async function createOrderItem(data: {
   return item;
 }
 
+export async function createOrderItemForOrder(data: {
+  order_id: string;
+  product_id: string;
+  quantity: number;
+}) {
+  await connectDB();
+
+  const orderExists = await Order.findById(data.order_id);
+  if (!orderExists) {
+    throw new Error("Order not found");
+  }
+
+  const productExists = await Product.findById(data.product_id);
+  if (!productExists) {
+    throw new Error("Product not found");
+  }
+
+  const existing = await OrderItem.findOne({
+    order_id: data.order_id,
+    product_id: data.product_id,
+  });
+
+  if (existing) {
+    existing.quantity_kg += data.quantity;
+    await existing.save();
+    await refreshOrderSubtotal(data.order_id);
+    return existing;
+  }
+
+  const item = await OrderItem.create({
+    order_id: new mongoose.Types.ObjectId(data.order_id),
+    product_id: new mongoose.Types.ObjectId(data.product_id),
+    quantity_kg: data.quantity,
+  });
+
+  await refreshOrderSubtotal(data.order_id);
+  return item;
+}
+
 export async function getOrderItemsByUser(userId: string) {
   await connectDB();
 
@@ -90,7 +129,7 @@ export async function getOrderItemsByOrder(orderId: string) {
 
   return OrderItem.find({
     order_id: orderId
-  }).lean();
+  }).populate("product_id").lean();
 }
 
 export async function getOrderItemById(id: string) {

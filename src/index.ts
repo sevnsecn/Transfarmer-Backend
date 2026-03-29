@@ -54,6 +54,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/farms", farmRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/orders/:id/order_items", orderItemRoutes);
 app.use("/api/orderItems", orderItemRoutes);
 app.use("/api/upload/image", uploadRoutes);
 
