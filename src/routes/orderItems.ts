@@ -129,15 +129,17 @@
   // GET /api/orders/:id/order_items
 router.get("/", async (req: Request, res: Response) => {
   try {
-    console.log("USER:", (req as any).user); // 👈 ADD THIS
-
     const userId = (req as any).user.id;
-
     const items = await getOrderItemsByUser(userId);
 
-    res.json({ success: true, data: items });
+    const normalized = items.map((item: any) => ({
+      ...item,
+      quantity: item.quantity_kg,
+    }));
+
+    res.json({ success: true, data: normalized });
   } catch (error) {
-    console.error("ERROR:", error); // 👈 ADD THIS
+    console.error("ERROR:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch cart items",
@@ -153,10 +155,16 @@ router.post("/", async (req: Request, res: Response) => {
     const item = await createOrderItem({
       user_id: userId,
       product_id: req.body.product_id,
-      quantity: req.body.quantity,
+      quantity: Number(req.body.quantity),
     });
 
-    res.status(201).json({ success: true, data: item });
+    res.status(201).json({
+      success: true,
+      data: {
+        ...item.toObject(),
+        quantity: item.quantity_kg,
+      },
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({
@@ -171,7 +179,18 @@ router.get("/:itemsId", async (req: Request, res: Response) => {
   try {
     const item = await getOrderItemById(req.params.itemsId as string);
 
-    res.json({ success: true, data: item });
+    if (!item) {
+      res.status(404).json({ success: false, message: "Item not found" });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        ...item,
+        quantity: (item as any).quantity_kg,
+      },
+    });
   } catch {
     res.status(500).json({
       success: false,
@@ -185,10 +204,21 @@ router.put("/:itemsId", async (req: Request, res: Response) => {
   try {
     const updated = await updateOrderItem(
       req.params.itemsId as string,
-      { quantity: req.body.quantity }
+      { quantity: Number(req.body.quantity) }
     );
 
-    res.json({ success: true, data: updated });
+    if (!updated) {
+      res.status(404).json({ success: false, message: "Item not found" });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        ...updated,
+        quantity: (updated as any).quantity_kg,
+      },
+    });
   } catch {
     res.status(500).json({
       success: false,
@@ -200,7 +230,12 @@ router.put("/:itemsId", async (req: Request, res: Response) => {
 // 🔥 DELETE ITEM
 router.delete("/:itemsId", async (req: Request, res: Response) => {
   try {
-    await deleteOrderItem(req.params.itemsId as string);
+    const deleted = await deleteOrderItem(req.params.itemsId as string);
+
+    if (!deleted) {
+      res.status(404).json({ success: false, message: "Item not found" });
+      return;
+    }
 
     res.json({
       success: true,

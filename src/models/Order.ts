@@ -3,41 +3,28 @@ import mongoose from "mongoose";
 const OrderSchema = new mongoose.Schema(
   {
     user_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+
+    order_date: {
+      type: Date,
+      default: Date.now,
+    },
+
+    order_status: {
       type: String,
-      required: true
+      enum: ["cart", "pending", "confirmed", "delivered"],
+      default: "cart",
     },
 
-     items: [
-      {
-        product_id: String,
-        quantity: Number,
-        price: Number,
-        item_status: {
-          type: String,
-          enum: ["pending", "confirmed", "delivered"],
-          default: "pending",
-        },
-      }
-    ],
-
-
-    address: {
-      full_name: String,
-      phone: String,
-      address_line: String,
-      city: String,
-      postal_code: String,
-    },
-
-    status: {
-      type: String,
-      default: "pending"
-    },
-
-    total_price: {
+    subtotal: {
       type: Number,
-      required: true
-    }
+      required: true,
+      default: 0,
+      min: 0,
+    },
   },
   { timestamps: true }
 );

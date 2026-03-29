@@ -1,0 +1,244 @@
+"use strict";
+/**
+ * @swagger
+ * /api/products:
+ *   get:
+ *     summary: Get all products
+ *     tags: [Products]
+ *     parameters:
+ *       - in: query
+ *         name: farm_id
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: minPrice
+ *         schema:
+ *           type: number
+ *       - in: query
+ *         name: maxPrice
+ *         schema:
+ *           type: number
+ *     responses:
+ *       200:
+ *         description: List of products
+ *       500:
+ *         description: Failed to fetch products
+ *   post:
+ *     summary: Create a product (admin only)
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [farm_id, product_name, price_per_kg, stock_kg]
+ *             properties:
+ *               farm_id:
+ *                 type: string
+ *               product_name:
+ *                 type: string
+ *               price_per_kg:
+ *                 type: number
+ *               stock_kg:
+ *                 type: number
+ *               product_image:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Product created
+ *       400:
+ *         description: Missing or invalid fields
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Admin access required
+ *       404:
+ *         description: Farm not found
+ * /api/products/{id}:
+ *   get:
+ *     summary: Get a single product
+ *     tags: [Products]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Product data
+ *       404:
+ *         description: Product not found
+ *   put:
+ *     summary: Update a product (admin only)
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               farm_id:
+ *                 type: string
+ *               product_name:
+ *                 type: string
+ *               price_per_kg:
+ *                 type: number
+ *               stock_kg:
+ *                 type: number
+ *               product_image:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Product updated
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Admin access required
+ *       404:
+ *         description: Product or farm not found
+ *   delete:
+ *     summary: Delete a product (admin only)
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Product deleted
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Admin access required
+ *       404:
+ *         description: Product not found
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const productService_1 = require("../services/productService");
+const auth_1 = require("../middleware/auth");
+const router = (0, express_1.Router)();
+// GET /api/products
+router.get("/", async (req, res) => {
+    try {
+        const filters = {};
+        if (req.query.farm_id)
+            filters.farm_id = req.query.farm_id;
+        if (req.query.search)
+            filters.search = req.query.search;
+        if (req.query.minPrice)
+            filters.minPrice = Number(req.query.minPrice);
+        if (req.query.maxPrice)
+            filters.maxPrice = Number(req.query.maxPrice);
+        const products = await (0, productService_1.getAllProducts)(filters);
+        res.json({ success: true, data: products, count: products.length });
+    }
+    catch {
+        res.status(500).json({ success: false, message: "Failed to fetch products" });
+    }
+});
+// POST /api/products
+router.post("/", auth_1.requireAdmin, async (req, res) => {
+    try {
+        const { farm_id, product_name, price_per_kg, stock_kg, product_image } = req.body;
+        if (!farm_id || !product_name || price_per_kg === undefined || stock_kg === undefined) {
+            res.status(400).json({ success: false, message: "farm_id, product_name, price_per_kg, and stock_kg are required" });
+            return;
+        }
+        if (price_per_kg <= 0 || stock_kg < 0) {
+            res.status(400).json({ success: false, message: "price_per_kg must be positive and stock_kg cannot be negative" });
+            return;
+        }
+        const product = await (0, productService_1.createProduct)({ farm_id, product_name, price_per_kg: Number(price_per_kg), stock_kg: Number(stock_kg), product_image });
+        res.status(201).json({ success: true, data: product });
+    }
+    catch (error) {
+        if (error.message === "Farm not found") {
+            res.status(404).json({ success: false, message: "Farm not found" });
+            return;
+        }
+        res.status(500).json({ success: false, message: "Failed to create product" });
+    }
+});
+// GET /api/products/:id
+router.get("/:id", async (req, res) => {
+    try {
+        const product = await (0, productService_1.getProductById)(req.params.id);
+        if (!product) {
+            res.status(404).json({ success: false, message: "Product not found" });
+            return;
+        }
+        res.json({ success: true, data: product });
+    }
+    catch {
+        res.status(500).json({ success: false, message: "Failed to fetch product" });
+    }
+});
+// PUT /api/products/:id
+router.put("/:id", auth_1.requireAdmin, async (req, res) => {
+    try {
+        const { farm_id, product_name, price_per_kg, stock_kg, product_image } = req.body;
+        if (price_per_kg !== undefined && price_per_kg <= 0) {
+            res.status(400).json({ success: false, message: "price_per_kg must be positive" });
+            return;
+        }
+        if (stock_kg !== undefined && stock_kg < 0) {
+            res.status(400).json({ success: false, message: "stock_kg cannot be negative" });
+            return;
+        }
+        const product = await (0, productService_1.updateProduct)(req.params.id, {
+            ...(farm_id && { farm_id }),
+            ...(product_name && { product_name }),
+            ...(price_per_kg !== undefined && { price_per_kg: Number(price_per_kg) }),
+            ...(stock_kg !== undefined && { stock_kg: Number(stock_kg) }),
+            ...(product_image !== undefined && { product_image }),
+        });
+        res.json({ success: true, data: product });
+    }
+    catch (error) {
+        if (error.message === "Product not found") {
+            res.status(404).json({ success: false, message: "Product not found" });
+            return;
+        }
+        if (error.message === "Farm not found") {
+            res.status(404).json({ success: false, message: "Farm not found" });
+            return;
+        }
+        res.status(500).json({ success: false, message: "Failed to update product" });
+    }
+});
+// DELETE /api/products/:id
+router.delete("/:id", auth_1.requireAdmin, async (req, res) => {
+    try {
+        await (0, productService_1.deleteProduct)(req.params.id);
+        res.json({ success: true, message: "Product deleted successfully" });
+    }
+    catch (error) {
+        if (error.message === "Product not found") {
+            res.status(404).json({ success: false, message: "Product not found" });
+            return;
+        }
+        res.status(500).json({ success: false, message: "Failed to delete product" });
+    }
+});
+exports.default = router;

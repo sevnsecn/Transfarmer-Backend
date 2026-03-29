@@ -2,8 +2,9 @@ import mongoose from "mongoose";
 
 const OrderItemSchema = new mongoose.Schema(
   {
-    user_id: {
-      type: String, // from JWT
+    order_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Order",
       required: true,
     },
     product_id: {
@@ -11,7 +12,7 @@ const OrderItemSchema = new mongoose.Schema(
       ref: "Product",
       required: true,
     },
-    quantity: {
+    quantity_kg: {
       type: Number,
       required: true,
       min: 1,

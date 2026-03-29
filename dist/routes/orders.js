@@ -1,3 +1,4 @@
+"use strict";
 /**
  * @swagger
  * /api/orders:
@@ -144,139 +145,121 @@
  *       500:
  *         description: Failed to fetch user orders
  */
-
-import { Router, Request, Response } from "express";
-import {
-  getAllOrders,
-  getOrderById,
-  createOrder,
-  updateOrder,
-  deleteOrder,
-  checkoutOrder,
-  getOrdersByUser,
-} from "../services/orderService";
-import authMiddleware from "../middleware/auth";
-
-const router = Router();
-
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const orderService_1 = require("../services/orderService");
+const auth_1 = __importDefault(require("../middleware/auth"));
+const router = (0, express_1.Router)();
 // GET /api/orders
-router.get("/", async (req: Request, res: Response) => {
-  try {
-    const orders = await getAllOrders();
-    res.json({ success: true, data: orders, count: orders.length });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to fetch orders" });
-  }
+router.get("/", async (req, res) => {
+    try {
+        const orders = await (0, orderService_1.getAllOrders)();
+        res.json({ success: true, data: orders, count: orders.length });
+    }
+    catch {
+        res.status(500).json({ success: false, message: "Failed to fetch orders" });
+    }
 });
-
 // POST /api/orders
-router.post("/", async (req: Request, res: Response) => {
-  try {
-    const { user_id, total_price, subtotal, status } = req.body;
-    if (!user_id || total_price === undefined) {
-      if (subtotal === undefined) {
-        res.status(400).json({ success: false, message: "user_id and total_price are required" });
-        return;
-      }
+router.post("/", async (req, res) => {
+    try {
+        const { user_id, total_price, subtotal, status } = req.body;
+        if (!user_id || total_price === undefined) {
+            if (subtotal === undefined) {
+                res.status(400).json({ success: false, message: "user_id and total_price are required" });
+                return;
+            }
+        }
+        const order = await (0, orderService_1.createOrder)({
+            user_id,
+            total_price: Number(total_price ?? subtotal),
+            status: status || "pending",
+        });
+        res.status(201).json({ success: true, data: order });
     }
-
-    const order = await createOrder({
-      user_id,
-      total_price: Number(total_price ?? subtotal),
-      status: status || "pending",
-    });
-    res.status(201).json({ success: true, data: order });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to create order" });
-  }
+    catch {
+        res.status(500).json({ success: false, message: "Failed to create order" });
+    }
 });
-
 // GET /api/orders/my-orders
-router.get("/my-orders", authMiddleware, async (req, res) => {
-  try {
-    const user = (req as any).user;
-    const orders = await getOrdersByUser(user.id);
-
-    res.json({
-      success: true,
-      data: orders,
-    });
-  } catch (err: any) {
-    console.error("MY ORDERS ERROR:", err);
-
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
-  }
+router.get("/my-orders", auth_1.default, async (req, res) => {
+    try {
+        const user = req.user;
+        const orders = await (0, orderService_1.getOrdersByUser)(user.id);
+        res.json({
+            success: true,
+            data: orders,
+        });
+    }
+    catch (err) {
+        console.error("MY ORDERS ERROR:", err);
+        res.status(500).json({
+            success: false,
+            message: err.message,
+        });
+    }
 });
-
-
 // GET /api/orders/:id
-router.get("/:id", async (req: Request, res: Response) => {
-  try {
-    const order = await getOrderById(req.params.id as string);
-    if (!order) {
-      res.status(404).json({ success: false, message: "Order not found" });
-      return;
+router.get("/:id", async (req, res) => {
+    try {
+        const order = await (0, orderService_1.getOrderById)(req.params.id);
+        if (!order) {
+            res.status(404).json({ success: false, message: "Order not found" });
+            return;
+        }
+        res.json({ success: true, data: order });
     }
-    res.json({ success: true, data: order });
-  } catch {
-    res.status(404).json({ success: false, message: "Order not found" });
-  }
+    catch {
+        res.status(404).json({ success: false, message: "Order not found" });
+    }
 });
-
 // PUT /api/orders/:id
-router.put("/:id", async (req: Request, res: Response) => {
-  try {
-    const order = await updateOrder(req.params.id as string, {
-      status: req.body.status,
-      total_price: req.body.total_price,
-    });
-    res.json({ success: true, data: order });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: "Failed to update order" });
-  }
-});
-
-// DELETE /api/orders/:id
-router.delete("/:id", async (req: Request, res: Response) => {
-  try {
-    const order = await deleteOrder(req.params.id as string);    res.json({ success: true, message: "Order deleted", data: order });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: "Failed to delete order" });
-  }
-});
-
-
-
-
-// POST /api/orders/checkout
-router.post("/checkout", authMiddleware, async (req, res)  => {
-  try {
-    const user = (req as any).user;
-
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized",
-      });
+router.put("/:id", async (req, res) => {
+    try {
+        const order = await (0, orderService_1.updateOrder)(req.params.id, {
+            status: req.body.status,
+            total_price: req.body.total_price,
+        });
+        res.json({ success: true, data: order });
     }
-
-    const order = await checkoutOrder(user.id);
-
-    res.json({ success: true, data: order });
-  } catch (err: any) {
-    console.error("CHECKOUT ERROR:", err.message);
-
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
-  }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: "Failed to update order" });
+    }
 });
-
-
-export default router;
+// DELETE /api/orders/:id
+router.delete("/:id", async (req, res) => {
+    try {
+        const order = await (0, orderService_1.deleteOrder)(req.params.id);
+        res.json({ success: true, message: "Order deleted", data: order });
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: "Failed to delete order" });
+    }
+});
+// POST /api/orders/checkout
+router.post("/checkout", auth_1.default, async (req, res) => {
+    try {
+        const user = req.user;
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: "Unauthorized",
+            });
+        }
+        const order = await (0, orderService_1.checkoutOrder)(user.id);
+        res.json({ success: true, data: order });
+    }
+    catch (err) {
+        console.error("CHECKOUT ERROR:", err.message);
+        res.status(500).json({
+            success: false,
+            message: err.message,
+        });
+    }
+});
+exports.default = router;
