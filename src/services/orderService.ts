@@ -17,15 +17,21 @@ export interface UpdateOrderInput {
 async function formatOrder(order: any) {
   const itemsRaw = await getOrderItemsByOrder(String(order._id));
 
+  const user = await getUserById(order.user_id);
+
   const items = itemsRaw.map((item: any) => ({
     _id: item._id,
     product_id: String(item.product_id?._id || item.product_id),
+    product_name: item.product_id?.product_name || "Uknown Product",
     quantity: item.quantity_kg,
     price: item.product_id?.price_per_kg || 0,
   }));
 
   return {
-    ...order,
+    _id: order._id,
+    user_id: order.user_id,
+    user_name: user?.user_name || "Unknown User",
+    address: user?.address || null,
     status: order.order_status,
     total_price: order.subtotal,
     items,
