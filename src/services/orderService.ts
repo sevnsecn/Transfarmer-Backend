@@ -22,7 +22,10 @@ async function formatOrder(order: any) {
   const items = itemsRaw.map((item: any) => ({
     _id: item._id,
     product_id: String(item.product_id?._id || item.product_id),
-    product_name: item.product_id?.product_name || "Uknown Product",
+    product_name:
+      item.product_id?.product_name ||
+      item.product_id?.name ||
+      "Unknown Product",
     quantity: item.quantity_kg,
     price: item.product_id?.price_per_kg || 0,
   }));
