@@ -6,7 +6,29 @@
  *     tags: [Farms]
  *     responses:
  *       200:
- *         description: List of farms
+ *         description: List of farms retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       farm_name:
+ *                         type: string
+ *                       farm_location:
+ *                         type: string
+ *                       farm_image:
+ *                         type: string
+ *                 count:
+ *                   type: number
  *       500:
  *         description: Failed to fetch farms
  *   post:
@@ -30,13 +52,24 @@
  *                 type: string
  *     responses:
  *       201:
- *         description: Farm created
+ *         description: Farm created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
  *       400:
  *         description: Missing required fields
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized (missing/invalid token)
  *       403:
  *         description: Admin access required
+ *       500:
+ *         description: Failed to create farm
  * /api/farms/{id}:
  *   get:
  *     summary: Get a single farm
@@ -49,9 +82,20 @@
  *           type: string
  *     responses:
  *       200:
- *         description: Farm data
+ *         description: Farm data retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
  *       404:
  *         description: Farm not found
+ *       500:
+ *         description: Failed to fetch farm
  *   put:
  *     summary: Update a farm (admin only)
  *     tags: [Farms]
@@ -77,13 +121,24 @@
  *                 type: string
  *     responses:
  *       200:
- *         description: Farm updated
+ *         description: Farm updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized (missing/invalid token)
  *       403:
  *         description: Admin access required
  *       404:
  *         description: Farm not found
+ *       500:
+ *         description: Failed to update farm
  *   delete:
  *     summary: Delete a farm (admin only)
  *     tags: [Farms]
@@ -97,13 +152,24 @@
  *           type: string
  *     responses:
  *       200:
- *         description: Farm deleted
+ *         description: Farm deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized (missing/invalid token)
  *       403:
  *         description: Admin access required
  *       404:
  *         description: Farm not found
+ *       500:
+ *         description: Failed to delete farm
  */
 
 import { Router, Request, Response } from "express";

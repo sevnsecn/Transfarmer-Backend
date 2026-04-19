@@ -23,9 +23,28 @@
  *                 example: password123
  *     responses:
  *       201:
- *         description: User created
+ *         description: User created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     user_name:
+ *                       type: string
+ *                     user_email:
+ *                       type: string
  *       400:
- *         description: Missing fields, weak password(min 6 chars, at least 1 letter or symbol), invalid email, or email already exists
+ *         description: Missing fields, weak password (min 6 chars, at least 1 letter or symbol), invalid email, or email already exists
+ *       500:
+ *         description: Server error
  * /api/auth/login:
  *   post:
  *     summary: Login and receive a JWT token
@@ -46,7 +65,18 @@
  *                 example: password123
  *     responses:
  *       200:
- *         description: Login successful, returns token
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 token:
+ *                   type: string
+ *                   description: JWT authentication token
  *       401:
  *         description: Invalid credentials
  *       500:

@@ -6,7 +6,20 @@
  *     tags: [Orders]
  *     responses:
  *       200:
- *         description: List of orders
+ *         description: List of orders retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 count:
+ *                   type: number
  *       500:
  *         description: Failed to fetch orders
  *   post:
@@ -18,89 +31,36 @@
  *         application/json:
  *           schema:
  *             type: object
- *             required: [user_id, total_price]
+ *             required: [user_id]
  *             properties:
  *               user_id:
  *                 type: string
  *               total_price:
  *                 type: number
+ *                 description: Required if subtotal not provided
+ *               subtotal:
+ *                 type: number
+ *                 description: Alternative to total_price
  *               status:
  *                 type: string
  *                 enum: [cart, pending, confirmed, delivered]
+ *                 default: pending
  *     responses:
  *       201:
- *         description: Order created
+ *         description: Order created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
  *       400:
- *         description: Missing required fields
+ *         description: Missing required fields (user_id and either total_price or subtotal)
  *       500:
  *         description: Failed to create order
- *
- * /api/orders/{id}:
- *   get:
- *     summary: Get a single order
- *     tags: [Orders]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Order data
- *       404:
- *         description: Order not found
- *   put:
- *     summary: Update order status
- *     tags: [Orders]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               status:
- *                 type: string
- *                 enum: [cart, pending, confirmed, delivered]
- *     responses:
- *       200:
- *         description: Order updated
- *       500:
- *         description: Failed to update order
- *   delete:
- *     summary: Delete an order
- *     tags: [Orders]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Order deleted
- *       500:
- *         description: Failed to delete order
- *
- * /api/orders/checkout:
- *   post:
- *     summary: Checkout an order
- *     tags: [Orders]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Order checked out
- *       401:
- *         description: Unauthorized
- *       500:
- *         description: Checkout failed
  *
  * /api/orders/my-orders:
  *   get:
@@ -143,6 +103,115 @@
  *         description: Unauthorized (missing/invalid token)
  *       500:
  *         description: Failed to fetch user orders
+ *
+ * /api/orders/checkout:
+ *   post:
+ *     summary: Checkout an order (convert cart to pending)
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Order checked out successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *       401:
+ *         description: Unauthorized (missing/invalid token)
+ *       500:
+ *         description: Checkout failed
+ *
+ * /api/orders/{id}:
+ *   get:
+ *     summary: Get a single order
+ *     tags: [Orders]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Order data retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *       404:
+ *         description: Order not found
+ *       500:
+ *         description: Failed to fetch order
+ *   put:
+ *     summary: Update order status or total_price
+ *     tags: [Orders]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [cart, pending, confirmed, delivered]
+ *               total_price:
+ *                 type: number
+ *     responses:
+ *       200:
+ *         description: Order updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *       500:
+ *         description: Failed to update order
+ *   delete:
+ *     summary: Delete an order
+ *     tags: [Orders]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Order deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *       500:
+ *         description: Failed to delete order
  */
 
 import { Router, Request, Response } from "express";
@@ -211,6 +280,31 @@ router.get("/my-orders", authMiddleware, async (req, res) => {
   }
 });
 
+// POST /api/orders/checkout
+router.post("/checkout", authMiddleware, async (req, res)  => {
+  try {
+    const user = (req as any).user;
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const order = await checkoutOrder(user.id);
+
+    res.json({ success: true, data: order });
+  } catch (err: any) {
+    console.error("CHECKOUT ERROR:", err.message);
+
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
 
 // GET /api/orders/:id
 router.get("/:id", async (req: Request, res: Response) => {
@@ -249,34 +343,5 @@ router.delete("/:id", async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: "Failed to delete order" });
   }
 });
-
-
-
-
-// POST /api/orders/checkout
-router.post("/checkout", authMiddleware, async (req, res)  => {
-  try {
-    const user = (req as any).user;
-
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized",
-      });
-    }
-
-    const order = await checkoutOrder(user.id);
-
-    res.json({ success: true, data: order });
-  } catch (err: any) {
-    console.error("CHECKOUT ERROR:", err.message);
-
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
-  }
-});
-
 
 export default router;

@@ -2,28 +2,45 @@
  * @swagger
  * /api/products:
  *   get:
- *     summary: Get all products
+ *     summary: Get all products with optional filters
  *     tags: [Products]
  *     parameters:
  *       - in: query
  *         name: farm_id
  *         schema:
  *           type: string
+ *         description: Filter by farm ID
  *       - in: query
  *         name: search
  *         schema:
  *           type: string
+ *         description: Search by product name
  *       - in: query
  *         name: minPrice
  *         schema:
  *           type: number
+ *         description: Minimum price per kg
  *       - in: query
  *         name: maxPrice
  *         schema:
  *           type: number
+ *         description: Maximum price per kg
  *     responses:
  *       200:
- *         description: List of products
+ *         description: List of products retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 count:
+ *                   type: number
  *       500:
  *         description: Failed to fetch products
  *   post:
@@ -51,15 +68,26 @@
  *                 type: string
  *     responses:
  *       201:
- *         description: Product created
+ *         description: Product created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
  *       400:
  *         description: Missing or invalid fields
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized (missing/invalid token)
  *       403:
  *         description: Admin access required
  *       404:
  *         description: Farm not found
+ *       500:
+ *         description: Failed to create product
  * /api/products/{id}:
  *   get:
  *     summary: Get a single product
@@ -72,9 +100,20 @@
  *           type: string
  *     responses:
  *       200:
- *         description: Product data
+ *         description: Product data retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
  *       404:
  *         description: Product not found
+ *       500:
+ *         description: Failed to fetch product
  *   put:
  *     summary: Update a product (admin only)
  *     tags: [Products]
@@ -104,13 +143,24 @@
  *                 type: string
  *     responses:
  *       200:
- *         description: Product updated
+ *         description: Product updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized (missing/invalid token)
  *       403:
  *         description: Admin access required
  *       404:
  *         description: Product or farm not found
+ *       500:
+ *         description: Failed to update product
  *   delete:
  *     summary: Delete a product (admin only)
  *     tags: [Products]
@@ -124,13 +174,24 @@
  *           type: string
  *     responses:
  *       200:
- *         description: Product deleted
+ *         description: Product deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized (missing/invalid token)
  *       403:
  *         description: Admin access required
  *       404:
  *         description: Product not found
+ *       500:
+ *         description: Failed to delete product
  */
 
 import { Router, Request, Response } from "express";

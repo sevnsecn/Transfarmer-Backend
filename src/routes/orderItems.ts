@@ -10,9 +10,21 @@
  *         required: true
  *         schema:
  *           type: string
+ *         description: Order ID
  *     responses:
  *       200:
- *         description: List of order items
+ *         description: List of order items retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
  *       500:
  *         description: Failed to fetch order items
  *   post:
@@ -24,6 +36,7 @@
  *         required: true
  *         schema:
  *           type: string
+ *         description: Order ID
  *     requestBody:
  *       required: true
  *       content:
@@ -34,13 +47,25 @@
  *             properties:
  *               items_id:
  *                 type: string
+ *                 description: Product ID
  *               quantity:
  *                 type: number
  *               price:
  *                 type: number
  *     responses:
  *       201:
- *         description: Order item created
+ *         description: Order item created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *       400:
+ *         description: Missing required fields
  *       500:
  *         description: Failed to create order item
  * /api/orders/{id}/order_items/{itemsId}:
@@ -53,14 +78,27 @@
  *         required: true
  *         schema:
  *           type: string
+ *         description: Order ID
  *       - in: path
  *         name: itemsId
  *         required: true
  *         schema:
  *           type: string
+ *         description: Order Item ID
  *     responses:
  *       200:
- *         description: Order item data
+ *         description: Order item data retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *       404:
+ *         description: Order item not found
  *       500:
  *         description: Failed to fetch order item
  *   put:
@@ -72,11 +110,13 @@
  *         required: true
  *         schema:
  *           type: string
+ *         description: Order ID
  *       - in: path
  *         name: itemsId
  *         required: true
  *         schema:
  *           type: string
+ *         description: Order Item ID
  *     requestBody:
  *       content:
  *         application/json:
@@ -89,7 +129,16 @@
  *                 type: number
  *     responses:
  *       200:
- *         description: Order item updated
+ *         description: Order item updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
  *       500:
  *         description: Failed to update order item
  *   delete:
@@ -101,14 +150,25 @@
  *         required: true
  *         schema:
  *           type: string
+ *         description: Order ID
  *       - in: path
  *         name: itemsId
  *         required: true
  *         schema:
  *           type: string
+ *         description: Order Item ID
  *     responses:
  *       200:
- *         description: Order item deleted
+ *         description: Order item deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
  *       500:
  *         description: Failed to delete order item
  */
@@ -226,7 +286,7 @@ router.get("/:itemsId", async (req: Request, res: Response) => {
   }
 });
 
-// 🔥 UPDATE QUANTITY
+//  UPDATE QUANTITY
 router.put("/:itemsId", async (req: Request, res: Response) => {
   try {
     const orderId = req.params.id as string | undefined;

@@ -1,8 +1,35 @@
 /**
  * @swagger
+ * /api/users:
+ *   get:
+ *     summary: Get all users (public endpoint)
+ *     tags: [Users]
+ *     responses:
+ *       200:
+ *         description: List of all users (basic info only)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       user_name:
+ *                         type: string
+ *                       user_email:
+ *                         type: string
+ *       500:
+ *         description: Failed to fetch users
  * /api/users/{id}:
  *   get:
- *     summary: Get user profile
+ *     summary: Get user profile (authenticated only)
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -14,11 +41,22 @@
  *           type: string
  *     responses:
  *       200:
- *         description: User profile
+ *         description: User profile retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized (missing/invalid token or not own profile)
  *       404:
  *         description: User not found
+ *       500:
+ *         description: Failed to fetch user
  *   put:
  *     summary: Update user profile
  *     tags: [Users]
@@ -40,21 +78,119 @@
  *                 type: string
  *               user_email:
  *                 type: string
-  *               current_password:
+ *               current_password:
  *                 type: string
- *                 example: oldpassword1
+ *                 description: Required if changing password
  *               new_password:
  *                 type: string
- *                 example: newpassword1
+ *                 description: New password (min 6 chars, at least 1 letter or symbol)
  *     responses:
  *       200:
- *         description: User updated
+ *         description: User profile updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
  *       400:
- *         description: Invalid email, weak password(min 6 chars, at least 1 letter or symbol), or email already exists
+ *         description: Invalid email, weak password (min 6 chars, at least 1 letter or symbol), email already exists, or invalid current password
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized (missing/invalid token or not own profile)
  *       404:
  *         description: User not found
+ *       500:
+ *         description: Failed to update user
+ * /api/users/{id}/address:
+ *   get:
+ *     summary: Get user address
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: User address retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     full_name:
+ *                       type: string
+ *                     phone:
+ *                       type: string
+ *                     address_line:
+ *                       type: string
+ *                     city:
+ *                       type: string
+ *                     postal_code:
+ *                       type: string
+ *       401:
+ *         description: Unauthorized (missing/invalid token)
+ *       404:
+ *         description: User or address not found
+ *       500:
+ *         description: Failed to fetch address
+ *   put:
+ *     summary: Update user address
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               full_name:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               address_line:
+ *                 type: string
+ *               city:
+ *                 type: string
+ *               postal_code:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Address updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *       401:
+ *         description: Unauthorized (missing/invalid token)
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Failed to update address
  */
 
 import { Router, Request, Response } from "express";
@@ -89,6 +225,18 @@ router.get("/:id", async (req: Request, res: Response) => {
     return;
   }
   res.json({ success: true, data: user });
+});
+
+// GET /api/users - Get all users currently used for stats on homepage
+router.get("/", async (req: Request, res: Response) => {
+  try {
+    const User = require("../models/User").default;
+    const users = await User.find();
+    res.json(users);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Failed to fetch users" });
+  }
 });
 
 // PUT /api/users/:id
