@@ -1,7 +1,9 @@
 import { connectDB } from "../lib/db";
 import Order from "../models/Order";
+import Product from "../models/Product";
 import { getOrderItemsByOrder, getOrderItemsByUser } from "../services/orderItemService";
 import { getUserById } from "../services/userService";
+
 
 export type CreateOrderInput = {
   user_id: string;
@@ -54,10 +56,12 @@ async function getCartOrderByUser(userId: string) {
   return cart;
 }
 
-// GET
+// GET all orders (excluding completed and cart)
 export async function getAllOrders() {
   await connectDB();
-  const orders = await Order.find({ order_status: { $ne: "cart" } }).lean();
+  const orders = await Order.find({
+    order_status: { $in: ["pending", "confirmed", "delivered"] },
+  }).lean();
   return Promise.all(orders.map(formatOrder));
 }
 
@@ -135,6 +139,15 @@ export async function checkoutOrder(userId: string) {
     throw new Error("Address not set");
   }
 
+  // Validate stock before deducting
+  for (const item of cartItems) {
+    const product = await Product.findById(item.product_id._id);
+    if (!product) throw new Error(`Product not found`);
+    if (product.stock_kg < item.quantity_kg) {
+      throw new Error(`Not enough stock for ${product.product_name}`);
+    }
+  }
+
   const total = cartItems.reduce(
     (sum, item) =>
       sum + item.quantity_kg * item.product_id.price_per_kg,
@@ -155,12 +168,59 @@ export async function checkoutOrder(userId: string) {
     throw new Error("Order not found");
   }
 
+  // Deduct stock after successful checkout
+  for (const item of cartItems) {
+    await Product.findByIdAndUpdate(item.product_id._id, {
+      $inc: { stock_kg: -item.quantity_kg },
+    });
+  }
+
+  return formatOrder(updated);
+}
+// GET orders by user shows completed orders as well, but excludes cart
+export async function getOrdersByUser(userId: string) {
+  await connectDB();
+  const orders = await Order.find({
+    user_id: userId,
+    order_status: { $ne: "cart" },
+  }).lean();
+  return Promise.all(orders.map(formatOrder));
+}
+
+export async function completeOrder(orderId: string, userId: string) {
+  await connectDB();
+
+  const order = await Order.findById(orderId);
+  if (!order) throw new Error("Order not found");
+  if (String(order.user_id) !== String(userId)) throw new Error("Unauthorized");
+  if (order.order_status !== "delivered") {
+    throw new Error("Order can only be completed after it has been delivered");
+  }
+
+  const updated = await Order.findByIdAndUpdate(
+    orderId,
+    { order_status: "completed" },
+    { returnDocument: "after" }
+  ).lean();
+
+  if (!updated) throw new Error("Order not found");
   return formatOrder(updated);
 }
 
-export async function getOrdersByUser(userId: string) {
+// Auto-complete orders that have been in "delivered" status for 3+ days
+export async function autoCompleteOrders() {
   await connectDB();
 
-  const orders = await Order.find({ user_id: userId, order_status: { $ne: "cart" } }).lean();
-  return Promise.all(orders.map(formatOrder));
+  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+
+  const staleOrders = await Order.find({
+    order_status: "delivered",
+    updatedAt: { $lte: threeDaysAgo },
+  });
+
+  for (const order of staleOrders) {
+    await Order.findByIdAndUpdate(order._id, { order_status: "completed" });
+  }
+
+  return staleOrders.length;
 }

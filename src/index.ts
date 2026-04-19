@@ -13,6 +13,7 @@ import productRoutes from "./routes/products";
 import orderRoutes from "./routes/orders";
 import orderItemRoutes from "./routes/orderItems";
 import uploadRoutes from "./routes/upload/image";
+import { autoCompleteOrders } from "./services/orderService";
 
 
 
@@ -63,3 +64,13 @@ app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(`Swagger docs at http://localhost:${PORT}/api-docs`);
 });
+
+// Run auto-complete check every 6 hours
+setInterval(async () => {
+  try {
+    const count = await autoCompleteOrders();
+    if (count > 0) console.log(`[auto-complete] ${count} orders completed`);
+  } catch (err) {
+    console.error("[auto-complete] error:", err);
+  }
+}, 6 * 60 * 60 * 1000);

@@ -223,6 +223,8 @@ import {
   deleteOrder,
   checkoutOrder,
   getOrdersByUser,
+    completeOrder,
+  autoCompleteOrders,
 } from "../services/orderService";
 import authMiddleware from "../middleware/auth";
 
@@ -305,6 +307,27 @@ router.post("/checkout", authMiddleware, async (req, res)  => {
   }
 });
 
+// POST /api/orders/auto-complete (internal/cron use)
+router.post("/auto-complete", async (req, res) => {
+  try {
+    const count = await autoCompleteOrders();
+    res.json({ success: true, message: `${count} orders auto-completed` });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+
+// POST /api/orders/:id/complete
+router.post("/:id/complete", authMiddleware, async (req, res) => {
+  try {
+    const user = (req as any).user;
+    const order = await completeOrder(req.params.id as string, user.id);
+    res.json({ success: true, data: order });
+  } catch (err: any) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
 
 // GET /api/orders/:id
 router.get("/:id", async (req: Request, res: Response) => {
@@ -321,19 +344,38 @@ router.get("/:id", async (req: Request, res: Response) => {
 });
 
 // PUT /api/orders/:id
+const STATUS_ORDER = ["cart", "pending", "confirmed", "delivered", "completed"];
+
 router.put("/:id", async (req: Request, res: Response) => {
   try {
-    const order = await updateOrder(req.params.id as string, {
+    const order = await getOrderById(req.params.id as string);
+    if (!order) {
+      res.status(404).json({ success: false, message: "Order not found" });
+      return;
+    }
+
+    if (req.body.status) {
+      const currentIndex = STATUS_ORDER.indexOf(order.status);
+      const newIndex = STATUS_ORDER.indexOf(req.body.status);
+      if (newIndex <= currentIndex) {
+        res.status(400).json({
+          success: false,
+          message: `Cannot revert order status from "${order.status}" to "${req.body.status}"`,
+        });
+        return;
+      }
+    }
+
+    const updated = await updateOrder(req.params.id as string, {
       status: req.body.status,
       total_price: req.body.total_price,
     });
-    res.json({ success: true, data: order });
+    res.json({ success: true, data: updated });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Failed to update order" });
   }
 });
-
 // DELETE /api/orders/:id
 router.delete("/:id", async (req: Request, res: Response) => {
   try {
