@@ -206,14 +206,27 @@ const router = Router();
 router.get("/", async (req: Request, res: Response) => {
   try {
     const filters: ProductFilters = {};
+
     if (req.query.farm_id) filters.farm_id = req.query.farm_id as string;
     if (req.query.search) filters.search = req.query.search as string;
     if (req.query.minPrice) filters.minPrice = Number(req.query.minPrice as string);
     if (req.query.maxPrice) filters.maxPrice = Number(req.query.maxPrice as string);
+
     const products = await getAllProducts(filters);
-    res.json({ success: true, data: products, count: products.length });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to fetch products" });
+
+    res.json({
+      success: true,
+      data: products,
+      count: products.length
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : "Unknown error"
+    });
   }
 });
 
@@ -305,9 +318,6 @@ router.delete("/:id", requireAdmin, async (req: Request, res: Response) => {
 router.post("/:id/deduct", async (req: Request, res: Response) => {
   try {
     const { quantity } = req.body;
-    const product = await updateProduct(req.params.id as string, {
-      stock_kg: undefined, // handled below
-    });
     await Product.findByIdAndUpdate(req.params.id, {
       $inc: { stock_kg: -Number(quantity) },
     });

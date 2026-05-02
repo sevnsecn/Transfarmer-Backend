@@ -6,6 +6,7 @@ import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
 import orderRoutes from "./routes/orders";
 import orderItemRoutes from "./routes/orderItems";
+import internalProductsRoutes from "./routes/internalProducts";
 
 const app = express();
 app.use(cors());
@@ -24,5 +25,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/api/orders", orderRoutes);
 app.use("/api/orders/:id/order_items", orderItemRoutes);
 app.use("/api/orderItems", orderItemRoutes);
+
+app.use("/internal", internalProductsRoutes);
 
 app.listen(5004, () => console.log("Order service running on port 5004"));

@@ -212,7 +212,7 @@ router.get("/", async (req: Request, res: Response) => {
   }
 });
 
-// 🔥 ADD TO CART
+// ADD TO CART
 router.post("/", async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
@@ -247,15 +247,19 @@ router.post("/", async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error(error);
+    console.error("ADD TO CART ERROR:", error);
+
     res.status(500).json({
       success: false,
-      message: "Failed to add to cart",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Unknown error",
     });
   }
 });
 
-// 🔥 GET SINGLE ITEM
+// GET SINGLE ITEM
 router.get("/:itemsId", async (req: Request, res: Response) => {
   try {
     const orderId = req.params.id as string | undefined;

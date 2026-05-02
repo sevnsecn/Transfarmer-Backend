@@ -1,6 +1,6 @@
 import { connectDB } from "../lib/db";
 import Product from "../models/Product";
-import Farm from "../models/Farm";
+import "../models/Farm";
 
 export type CreateProductInput = {
   farm_id: string;
@@ -49,30 +49,55 @@ export async function getProductById(id: string) {
 }
 
 // Create a new product (admin only)
+// Create a new product (admin only)
 export async function createProduct(data: CreateProductInput) {
   await connectDB();
 
-  const farm = await Farm.findById(data.farm_id);
-  if (!farm) throw new Error("Farm not found");
-
   const product = await Product.create(data);
-  return Product.findById(product._id).populate("farm_id").lean();
+
+  const populatedProduct = await Product.findById(product._id)
+    .populate("farm_id")
+    .lean();
+
+  // sync to order-db
+  try {
+    await fetch(`${process.env.ORDER_SERVICE_URL}/internal/products/${product._id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(populatedProduct),
+    });
+  } catch (err) {
+    console.error("Failed to sync created product to order-service:", err);
+  }
+
+  return populatedProduct;
 }
 
 // Update a product by id (admin only)
 export async function updateProduct(id: string, data: UpdateProductInput) {
   await connectDB();
 
-  if (data.farm_id) {
-    const farm = await Farm.findById(data.farm_id);
-    if (!farm) throw new Error("Farm not found");
-  }
-
   const product = await Product.findByIdAndUpdate(id, data, { new: true })
     .populate("farm_id")
     .lean();
 
   if (!product) throw new Error("Product not found");
+
+  // sync to order-db
+  try {
+    await fetch(`${process.env.ORDER_SERVICE_URL}/internal/products/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(product),
+    });
+  } catch (err) {
+    console.error("Failed to sync updated product to order-service:", err);
+  }
+
   return product;
 }
 
@@ -81,6 +106,17 @@ export async function deleteProduct(id: string) {
   await connectDB();
 
   const product = await Product.findByIdAndDelete(id);
+
   if (!product) throw new Error("Product not found");
+
+  // sync delete to order-db
+  try {
+    await fetch(`${process.env.ORDER_SERVICE_URL}/internal/products/${id}`, {
+      method: "DELETE",
+    });
+  } catch (err) {
+    console.error("Failed to sync deleted product to order-service:", err);
+  }
+
   return product;
 }
