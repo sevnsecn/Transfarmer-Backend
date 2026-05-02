@@ -197,6 +197,8 @@
 import { Router, Request, Response } from "express";
 import { getAllProducts, getProductById, createProduct, updateProduct, deleteProduct, ProductFilters } from "../services/productService";
 import { requireAdmin } from "../middleware/auth";
+import Product from "../models/Product";
+
 
 const router = Router();
 
@@ -296,6 +298,22 @@ router.delete("/:id", requireAdmin, async (req: Request, res: Response) => {
       return;
     }
     res.status(500).json({ success: false, message: "Failed to delete product" });
+  }
+});
+
+// Internal route — deduct stock after checkout
+router.post("/:id/deduct", async (req: Request, res: Response) => {
+  try {
+    const { quantity } = req.body;
+    const product = await updateProduct(req.params.id as string, {
+      stock_kg: undefined, // handled below
+    });
+    await Product.findByIdAndUpdate(req.params.id, {
+      $inc: { stock_kg: -Number(quantity) },
+    });
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ success: false, message: "Failed to deduct stock" });
   }
 });
 

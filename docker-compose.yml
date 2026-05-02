@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  auth-service:
+    build: ./services/auth-service
+    ports:
+      - "5001:5001"
+    env_file: ./services/auth-service/.env
+    depends_on:
+      - mongo
+
+  farm-service:
+    build: ./services/farm-service
+    ports:
+      - "5002:5002"
+    env_file: ./services/farm-service/.env
+    depends_on:
+      - mongo
+
+  product-service:
+    build: ./services/product-service
+    ports:
+      - "5003:5003"
+    env_file: ./services/product-service/.env
+    depends_on:
+      - mongo
+
+  order-service:
+    build: ./services/order-service
+    ports:
+      - "5004:5004"
+    env_file: ./services/order-service/.env
+    depends_on:
+      - mongo
+      - auth-service
+      - product-service
+
+  upload-service:
+    build: ./services/upload-service
+    ports:
+      - "5005:5005"
+    env_file: ./services/upload-service/.env
+    depends_on:
+      - mongo
+
+volumes:
+  mongo-data:

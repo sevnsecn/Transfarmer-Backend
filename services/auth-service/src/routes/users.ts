@@ -196,6 +196,8 @@
 import { Router, Request, Response } from "express";
 import { getUserById, updateUser, getUserWithPassword } from "../services/userService";import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import { connectDB } from "../lib/db";
+
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET!;
@@ -230,11 +232,11 @@ router.get("/:id", async (req: Request, res: Response) => {
 // GET /api/users - Get all users currently used for stats on homepage
 router.get("/", async (req: Request, res: Response) => {
   try {
+    await connectDB();
     const User = require("../models/User").default;
     const users = await User.find();
     res.json(users);
   } catch (error) {
-    console.error(error);
     res.status(500).json({ success: false, message: "Failed to fetch users" });
   }
 });
@@ -309,7 +311,7 @@ if (req.body.new_password) {
 //get
 router.get("/:id/address", async (req: Request, res: Response) => {
   const session = getUserFromToken(req);
-  const { id } = req.params as { id: string }; // 🔥 FIX
+  const { id } = req.params as { id: string };
 
   if (!session || session.id !== id) {
     return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -338,7 +340,7 @@ router.get("/:id/address", async (req: Request, res: Response) => {
 //update
 router.put("/:id/address", async (req: Request, res: Response) => {
   const session = getUserFromToken(req);
-  const { id } = req.params as { id: string }; // 🔥 FIX WAJIB
+  const { id } = req.params as { id: string }; 
 
   if (!session || session.id !== id) {
     return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -365,6 +367,20 @@ router.put("/:id/address", async (req: Request, res: Response) => {
       success: false,
       message: "Failed to update address",
     });
+  }
+});
+
+// Internal route for service-to-service calls, no auth required
+router.get("/internal/:id", async (req: Request, res: Response) => {
+  try {
+    const user = await getUserById(req.params.id as string);
+    if (!user) {
+      res.status(404).json({ success: false, message: "User not found" });
+      return;
+    }
+    res.json({ success: true, data: user });
+  } catch {
+    res.status(500).json({ success: false, message: "Failed to fetch user" });
   }
 });
 

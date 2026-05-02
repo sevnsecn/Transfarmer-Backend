@@ -1,8 +1,6 @@
 import { connectDB } from "../lib/db";
 import Order from "../models/Order";
-import Product from "../models/Product";
 import { getOrderItemsByOrder, getOrderItemsByUser } from "../services/orderItemService";
-import { getUserById } from "../services/userService";
 
 
 export type CreateOrderInput = {
@@ -19,15 +17,22 @@ export interface UpdateOrderInput {
 async function formatOrder(order: any) {
   const itemsRaw = await getOrderItemsByOrder(String(order._id));
 
-  const user = await getUserById(order.user_id);
+  // HTTP call to auth-service instead of direct import
+  let user = null;
+  try {
+    const userRes = await fetch(
+      `${process.env.AUTH_SERVICE_URL || "http://localhost:5001"}/api/users/internal/${order.user_id}`
+    );
+    const userData = await userRes.json();
+    if (userData.success) user = userData.data;
+  } catch {
+    user = null;
+  }
 
   const items = itemsRaw.map((item: any) => ({
     _id: item._id,
     product_id: String(item.product_id?._id || item.product_id),
-    product_name:
-      item.product_id?.product_name ||
-      item.product_id?.name ||
-      "Unknown Product",
+    product_name: item.product_id?.product_name || "Unknown Product",
     quantity: item.quantity_kg,
     price: item.product_id?.price_per_kg || 0,
   }));
@@ -133,15 +138,28 @@ export async function checkoutOrder(userId: string) {
     throw new Error("Cart is empty");
   }
 
-  const user = await getUserById(userId);
+  let checkoutUser = null;
+  try {
+    const userRes = await fetch(
+      `${process.env.AUTH_SERVICE_URL || "http://localhost:5001"}/api/users/internal/${userId}`
+    );
+    const userData = await userRes.json();
+    if (userData.success) checkoutUser = userData.data;
+  } catch {
+    throw new Error("Could not reach auth service");
+  }
 
-  if (!user?.address) {
+  if (!checkoutUser?.address) {
     throw new Error("Address not set");
   }
 
   // Validate stock before deducting
   for (const item of cartItems) {
-    const product = await Product.findById(item.product_id._id);
+    const productRes = await fetch(
+      `${process.env.PRODUCT_SERVICE_URL || "http://localhost:5003"}/api/products/${item.product_id._id}`
+    );
+    const productData = await productRes.json();
+    const product = productData.data;
     if (!product) throw new Error(`Product not found`);
     if (product.stock_kg < item.quantity_kg) {
       throw new Error(`Not enough stock for ${product.product_name}`);
@@ -168,11 +186,16 @@ export async function checkoutOrder(userId: string) {
     throw new Error("Order not found");
   }
 
-  // Deduct stock after successful checkout
+  // Deduct stock after checkout
   for (const item of cartItems) {
-    await Product.findByIdAndUpdate(item.product_id._id, {
-      $inc: { stock_kg: -item.quantity_kg },
-    });
+    await fetch(
+      `${process.env.PRODUCT_SERVICE_URL || "http://localhost:5003"}/api/products/${item.product_id._id}/deduct`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quantity: item.quantity_kg }),
+      }
+    );
   }
 
   return formatOrder(updated);
