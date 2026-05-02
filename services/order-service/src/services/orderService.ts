@@ -2,7 +2,6 @@ import { connectDB } from "../lib/db";
 import Order from "../models/Order";
 import { getOrderItemsByOrder, getOrderItemsByUser } from "../services/orderItemService";
 
-
 export type CreateOrderInput = {
   user_id: string;
   status?: "cart" | "pending" | "confirmed" | "delivered";
@@ -14,10 +13,10 @@ export interface UpdateOrderInput {
   total_price?: number;
 }
 
+// ── single-order formatter (used for create/update/checkout/complete) ──────────
 async function formatOrder(order: any) {
   const itemsRaw = await getOrderItemsByOrder(String(order._id));
 
-  // HTTP call to auth-service instead of direct import
   let user = null;
   try {
     const userRes = await fetch(
@@ -48,6 +47,49 @@ async function formatOrder(order: any) {
   };
 }
 
+// ── batch formatter (used for getAllOrders and getOrdersByUser) ─────────────────
+async function formatOrdersBatch(orders: any[]) {
+  if (orders.length === 0) return [];
+
+  const userIds = [...new Set(orders.map(o => String(o.user_id)))];
+
+  let usersMap: Record<string, any> = {};
+  try {
+    const url = `${process.env.AUTH_SERVICE_URL || "http://localhost:5001"}/api/users/internal/batch?ids=${userIds.join(",")}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.success) {
+      usersMap = Object.fromEntries(data.data.map((u: any) => [String(u._id), u]));
+    }
+  } catch {
+    // usersMap stays empty, names will show as "Unknown User"
+  }
+
+  const itemsPerOrder = await Promise.all(
+    orders.map(o => getOrderItemsByOrder(String(o._id)))
+  );
+
+  return orders.map((order, i) => {
+    const user = usersMap[String(order.user_id)] || null;
+    const items = itemsPerOrder[i].map((item: any) => ({
+      _id: item._id,
+      product_id: String(item.product_id?._id || item.product_id),
+      product_name: item.product_id?.product_name || "Unknown Product",
+      quantity: item.quantity_kg,
+      price: item.product_id?.price_per_kg || 0,
+    }));
+    return {
+      _id: order._id,
+      user_id: order.user_id,
+      user_name: user?.user_name || "Unknown User",
+      address: user?.address || null,
+      status: order.order_status,
+      total_price: order.subtotal,
+      items,
+    };
+  });
+}
+
 async function getCartOrderByUser(userId: string) {
   let cart = await Order.findOne({ user_id: userId, order_status: "cart" });
   if (!cart) {
@@ -61,16 +103,16 @@ async function getCartOrderByUser(userId: string) {
   return cart;
 }
 
-// GET all orders (excluding completed and cart)
+// ── exported functions ─────────────────────────────────────────────────────────
+
 export async function getAllOrders() {
   await connectDB();
   const orders = await Order.find({
     order_status: { $in: ["pending", "confirmed", "delivered"] },
   }).lean();
-  return Promise.all(orders.map(formatOrder));
+  return formatOrdersBatch(orders);
 }
 
-// GET by id
 export async function getOrderById(id: string) {
   await connectDB();
   const order = await Order.findById(id).lean();
@@ -78,65 +120,55 @@ export async function getOrderById(id: string) {
   return formatOrder(order);
 }
 
-//POST
 export async function createOrder(data: CreateOrderInput) {
   await connectDB();
-
   const order = await Order.create({
     user_id: data.user_id,
     order_status: data.status || "pending",
     subtotal: data.total_price || 0,
     order_date: new Date(),
   });
-
   const created = await Order.findById(order._id).lean();
   return created ? formatOrder(created) : null;
 }
 
-// PUT
 export async function updateOrder(id: string, data: UpdateOrderInput) {
   await connectDB();
-
   const order = await Order.findByIdAndUpdate(
     id,
     {
       ...(data.status && { order_status: data.status }),
       ...(data.total_price !== undefined && { subtotal: data.total_price }),
     },
-    {
-      returnDocument: "after", // replaces deprecated new:true
-      runValidators: true
-    }
+    { returnDocument: "after", runValidators: true }
   ).lean();
-
-  if (!order) {
-    throw new Error("Order not found");
-  }
-
+  if (!order) throw new Error("Order not found");
   return formatOrder(order);
 }
 
-//DELETE
 export async function deleteOrder(id: string) {
   await connectDB();
-
   const order = await Order.findByIdAndDelete(id);
-
   if (!order) throw new Error("Order not found");
-
   return order;
 }
 
-//checkout order
+export async function getOrdersByUser(userId: string) {
+  await connectDB();
+  const orders = await Order.find({
+    user_id: userId,
+    order_status: { $ne: "cart" },
+  }).lean();
+  return formatOrdersBatch(orders);
+}
+
 export async function checkoutOrder(userId: string) {
   await connectDB();
 
   const cartOrder = await getCartOrderByUser(userId);
   const cartItems = await getOrderItemsByUser(userId);
 
-  if (!cartItems.length) {
-    throw new Error("Cart is empty");
-  }
+  if (!cartItems.length) throw new Error("Cart is empty");
 
   let checkoutUser = null;
   try {
@@ -149,11 +181,8 @@ export async function checkoutOrder(userId: string) {
     throw new Error("Could not reach auth service");
   }
 
-  if (!checkoutUser?.address) {
-    throw new Error("Address not set");
-  }
+  if (!checkoutUser?.address) throw new Error("Address not set");
 
-  // Validate stock before deducting
   for (const item of cartItems) {
     const productRes = await fetch(
       `${process.env.PRODUCT_SERVICE_URL || "http://localhost:5003"}/api/products/${item.product_id._id}`
@@ -167,26 +196,18 @@ export async function checkoutOrder(userId: string) {
   }
 
   const total = cartItems.reduce(
-    (sum, item) =>
-      sum + item.quantity_kg * item.product_id.price_per_kg,
+    (sum, item) => sum + item.quantity_kg * item.product_id.price_per_kg,
     0
   );
 
   const updated = await Order.findByIdAndUpdate(
     cartOrder._id,
-    {
-      order_status: "pending",
-      subtotal: total,
-      order_date: new Date(),
-    },
+    { order_status: "pending", subtotal: total, order_date: new Date() },
     { returnDocument: "after" }
   ).lean();
 
-  if (!updated) {
-    throw new Error("Order not found");
-  }
+  if (!updated) throw new Error("Order not found");
 
-  // Deduct stock after checkout
   for (const item of cartItems) {
     await fetch(
       `${process.env.PRODUCT_SERVICE_URL || "http://localhost:5003"}/api/products/${item.product_id._id}/deduct`,
@@ -200,50 +221,33 @@ export async function checkoutOrder(userId: string) {
 
   return formatOrder(updated);
 }
-// GET orders by user shows completed orders as well, but excludes cart
-export async function getOrdersByUser(userId: string) {
-  await connectDB();
-  const orders = await Order.find({
-    user_id: userId,
-    order_status: { $ne: "cart" },
-  }).lean();
-  return Promise.all(orders.map(formatOrder));
-}
 
 export async function completeOrder(orderId: string, userId: string) {
   await connectDB();
-
   const order = await Order.findById(orderId);
   if (!order) throw new Error("Order not found");
   if (String(order.user_id) !== String(userId)) throw new Error("Unauthorized");
   if (order.order_status !== "delivered") {
     throw new Error("Order can only be completed after it has been delivered");
   }
-
   const updated = await Order.findByIdAndUpdate(
     orderId,
     { order_status: "completed" },
     { returnDocument: "after" }
   ).lean();
-
   if (!updated) throw new Error("Order not found");
   return formatOrder(updated);
 }
 
-// Auto-complete orders that have been in "delivered" status for 3+ days
 export async function autoCompleteOrders() {
   await connectDB();
-
   const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
-
   const staleOrders = await Order.find({
     order_status: "delivered",
     updatedAt: { $lte: threeDaysAgo },
   });
-
   for (const order of staleOrders) {
     await Order.findByIdAndUpdate(order._id, { order_status: "completed" });
   }
-
   return staleOrders.length;
 }
