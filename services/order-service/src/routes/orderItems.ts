@@ -1,9 +1,193 @@
 /**
  * @swagger
+ * /api/orderItems:
+ *   get:
+ *     summary: Get authenticated user's cart items
+ *     tags: [Order Items]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of user's cart items retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       order_id:
+ *                         type: string
+ *                       product_id:
+ *                         type: string
+ *                       quantity_kg:
+ *                         type: number
+ *                       quantity:
+ *                         type: number
+ *       401:
+ *         description: Unauthorized (missing/invalid token)
+ *       500:
+ *         description: Failed to fetch cart items
+ *   post:
+ *     summary: Add an item to authenticated user's cart
+ *     tags: [Order Items]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [product_id, quantity]
+ *             properties:
+ *               product_id:
+ *                 type: string
+ *                 description: Product ID to add
+ *               quantity:
+ *                 type: number
+ *                 description: Quantity in kg
+ *     responses:
+ *       201:
+ *         description: Item added to cart successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *       400:
+ *         description: Missing required fields (product_id and quantity) or invalid quantity
+ *       401:
+ *         description: Unauthorized (missing/invalid token)
+ *       500:
+ *         description: Failed to add item to cart
+ * /api/orderItems/{itemsId}:
+ *   get:
+ *     summary: Get a single cart item
+ *     tags: [Order Items]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: itemsId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Order Item ID
+ *     responses:
+ *       200:
+ *         description: Cart item data retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *       401:
+ *         description: Unauthorized (missing/invalid token)
+ *       404:
+ *         description: Cart item not found
+ *       500:
+ *         description: Failed to fetch cart item
+ *   put:
+ *     summary: Update cart item quantity
+ *     tags: [Order Items]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: itemsId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Order Item ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [quantity]
+ *             properties:
+ *               quantity:
+ *                 type: number
+ *                 description: Quantity in kg (must be positive)
+ *     responses:
+ *       200:
+ *         description: Cart item updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *       400:
+ *         description: Invalid quantity (must be a positive number)
+ *       401:
+ *         description: Unauthorized (missing/invalid token)
+ *       404:
+ *         description: Cart item not found
+ *       500:
+ *         description: Failed to update cart item
+ *   delete:
+ *     summary: Remove item from cart
+ *     tags: [Order Items]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: itemsId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Order Item ID
+ *     responses:
+ *       200:
+ *         description: Item removed from cart successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Item removed from cart
+ *       401:
+ *         description: Unauthorized (missing/invalid token)
+ *       404:
+ *         description: Cart item not found
+ *       500:
+ *         description: Failed to remove item from cart
  * /api/orders/{id}/order_items:
  *   get:
  *     summary: Get all items in an order
  *     tags: [Order Items]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -21,37 +205,52 @@
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
  *                 data:
  *                   type: array
  *                   items:
  *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       order_id:
+ *                         type: string
+ *                       product_id:
+ *                         type: string
+ *                       quantity_kg:
+ *                         type: number
+ *                       quantity:
+ *                         type: number
+ *       401:
+ *         description: Unauthorized (missing/invalid token)
  *       500:
  *         description: Failed to fetch order items
  *   post:
  *     summary: Add an item to an order
  *     tags: [Order Items]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: string
- *         description: Order ID
+ *         description: Order ID (optional - if not provided, uses authenticated user's cart)
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required: [items_id, quantity, price]
+ *             required: [product_id, quantity]
  *             properties:
- *               items_id:
+ *               product_id:
  *                 type: string
- *                 description: Product ID
+ *                 description: Product ID to add
  *               quantity:
  *                 type: number
- *               price:
- *                 type: number
+ *                 description: Quantity in kg
  *     responses:
  *       201:
  *         description: Order item created successfully
@@ -62,16 +261,21 @@
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
  *                 data:
  *                   type: object
  *       400:
- *         description: Missing required fields
+ *         description: Missing required fields (product_id and quantity) or invalid quantity
+ *       401:
+ *         description: Unauthorized (missing/invalid token)
  *       500:
  *         description: Failed to create order item
  * /api/orders/{id}/order_items/{itemsId}:
  *   get:
  *     summary: Get a single order item
  *     tags: [Order Items]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -95,15 +299,20 @@
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
  *                 data:
  *                   type: object
+ *       401:
+ *         description: Unauthorized (missing/invalid token)
  *       404:
- *         description: Order item not found
+ *         description: Order item not found for this order
  *       500:
  *         description: Failed to fetch order item
  *   put:
- *     summary: Update an order item
+ *     summary: Update an order item quantity
  *     tags: [Order Items]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -118,15 +327,16 @@
  *           type: string
  *         description: Order Item ID
  *     requestBody:
+ *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required: [quantity]
  *             properties:
  *               quantity:
  *                 type: number
- *               price:
- *                 type: number
+ *                 description: Quantity in kg (must be positive)
  *     responses:
  *       200:
  *         description: Order item updated successfully
@@ -137,13 +347,22 @@
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
  *                 data:
  *                   type: object
+ *       400:
+ *         description: Invalid quantity (must be a positive number)
+ *       401:
+ *         description: Unauthorized (missing/invalid token)
+ *       404:
+ *         description: Order item not found
  *       500:
  *         description: Failed to update order item
  *   delete:
  *     summary: Remove an item from an order
  *     tags: [Order Items]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -167,8 +386,14 @@
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
  *                 message:
  *                   type: string
+ *                   example: Item removed from cart
+ *       401:
+ *         description: Unauthorized (missing/invalid token)
+ *       404:
+ *         description: Order item not found
  *       500:
  *         description: Failed to delete order item
  */

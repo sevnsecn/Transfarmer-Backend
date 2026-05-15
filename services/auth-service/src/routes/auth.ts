@@ -77,6 +77,19 @@
  *                 token:
  *                   type: string
  *                   description: JWT authentication token
+ *                   example: eyJhbGciOiJIUzI1NiIs...
+ *                 user:
+ *                   type: object
+ *                   description: User information
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     user_name:
+ *                       type: string
+ *                     user_email:
+ *                       type: string
+ *                     is_admin:
+ *                       type: boolean
  *       401:
  *         description: Invalid credentials
  *       500:

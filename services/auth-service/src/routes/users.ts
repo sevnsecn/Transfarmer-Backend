@@ -27,6 +27,65 @@
  *                         type: string
  *       500:
  *         description: Failed to fetch users
+ * /api/users/internal/batch:
+ *   get:
+ *     summary: Get multiple users by IDs (internal)
+ *     tags: [Users]
+ *     description: Internal service-to-service endpoint. Not for public use.
+ *     parameters:
+ *       - in: query
+ *         name: ids
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Comma-separated list of user IDs (e.g., id1,id2,id3)
+ *     responses:
+ *       200:
+ *         description: Users retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       400:
+ *         description: Missing ids query parameter
+ *       500:
+ *         description: Failed to fetch users
+ * /api/users/internal/{id}:
+ *   get:
+ *     summary: Get user by ID (internal)
+ *     tags: [Users]
+ *     description: Internal service-to-service endpoint. Not for public use.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: User retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Failed to fetch user
  * /api/users/{id}:
  *   get:
  *     summary: Get user profile (authenticated only)

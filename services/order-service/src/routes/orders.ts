@@ -14,12 +14,30 @@
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
  *                 data:
  *                   type: array
  *                   items:
  *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       user_id:
+ *                         type: string
+ *                       total_price:
+ *                         type: number
+ *                       status:
+ *                         type: string
+ *                         enum: [cart, pending, confirmed, delivered]
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                       updated_at:
+ *                         type: string
+ *                         format: date-time
  *                 count:
  *                   type: number
+ *                   example: 5
  *       500:
  *         description: Failed to fetch orders
  *   post:
@@ -183,8 +201,11 @@
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
  *                 data:
  *                   type: object
+ *       404:
+ *         description: Order not found
  *       500:
  *         description: Failed to update order
  *   delete:
@@ -206,10 +227,13 @@
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
  *                 message:
  *                   type: string
  *                 data:
  *                   type: object
+ *       404:
+ *         description: Order not found
  *       500:
  *         description: Failed to delete order
  */
