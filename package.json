@@ -1,0 +1,20 @@
+{
+  "name": "transfarmer-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test:all": "cd services/auth-service && npm test && cd ../farm-service && npm test && cd ../product-service && npm test && cd ../order-service && npm test && cd ../upload-service && npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sevnsecn/Transfarmer-Backend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sevnsecn/Transfarmer-Backend/issues"
+  },
+  "homepage": "https://github.com/sevnsecn/Transfarmer-Backend#readme"
+}
