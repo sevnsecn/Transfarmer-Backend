@@ -29,6 +29,8 @@ services:
     ports:
       - "5003:5003"
     env_file: ./services/product-service/.env
+    environment:
+      - ORDER_SERVICE_URL=http://order-service:5004 
     depends_on:
       - mongo
 
