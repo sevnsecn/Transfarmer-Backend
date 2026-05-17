@@ -30,7 +30,7 @@ services:
       - "5003:5003"
     env_file: ./services/product-service/.env
     environment:
-      - ORDER_SERVICE_URL=http://order-service:5004 
+      - ORDER_SERVICE_URL=http://order-service:5004
     depends_on:
       - mongo
 
@@ -39,6 +39,9 @@ services:
     ports:
       - "5004:5004"
     env_file: ./services/order-service/.env
+    environment:
+      - AUTH_SERVICE_URL=http://auth-service:5001
+      - PRODUCT_SERVICE_URL=http://product-service:5003
     depends_on:
       - mongo
       - auth-service
@@ -61,22 +64,20 @@ services:
         PRODUCT_SERVICE_URL: http://product-service:5003
         ORDER_SERVICE_URL: http://order-service:5004
         UPLOAD_SERVICE_URL: http://upload-service:5005
-
     ports:
       - "3000:3000"
-
     environment:
       - AUTH_SERVICE_URL=http://auth-service:5001
       - FARM_SERVICE_URL=http://farm-service:5002
       - PRODUCT_SERVICE_URL=http://product-service:5003
       - ORDER_SERVICE_URL=http://order-service:5004
       - UPLOAD_SERVICE_URL=http://upload-service:5005
-
     depends_on:
       - auth-service
       - farm-service
       - product-service
       - order-service
       - upload-service
+
 volumes:
   mongo-data:
